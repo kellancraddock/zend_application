@@ -1,3 +1,10 @@
+/**
+* ExternalLinks is a class open links in a new browser window
+* @argument {object} a jquery object used to constrain the area effected
+* @constructor this.construct()
+* @returns false
+*/
+
 function ExternalLinks(element) {
 	var self = this;
 	this.root = element;
