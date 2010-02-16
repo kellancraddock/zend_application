@@ -16,8 +16,9 @@
  * @category   Zend
  * @package    Zend_Gdata
  * @subpackage Gdata
- * @copyright  Copyright (c) 2005-2009 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
+ * @version    $Id: HttpAdapterStreamingSocket.php 20096 2010-01-06 02:05:09Z bkarwin $
  */
 
 /**
@@ -32,7 +33,7 @@ require_once 'Zend/Http/Client/Adapter/Socket.php';
  * @category   Zend
  * @package    Zend_Gdata
  * @subpackage Gdata
- * @copyright  Copyright (c) 2005-2009 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  */
 class Zend_Gdata_HttpAdapterStreamingSocket extends Zend_Http_Client_Adapter_Socket
@@ -95,13 +96,16 @@ class Zend_Gdata_HttpAdapterStreamingSocket extends Zend_Http_Client_Adapter_Soc
 
 
         //read from $body, write to socket
-        while ($body->hasData()) {
-            if (! @fwrite($this->socket, $body->read(self::CHUNK_SIZE))) {
+        $chunk = $body->read(self::CHUNK_SIZE);
+        while ($chunk !== FALSE) {
+            if (! @fwrite($this->socket, $chunk)) {
                 require_once 'Zend/Http/Client/Adapter/Exception.php';
                 throw new Zend_Http_Client_Adapter_Exception(
                     'Error writing request to server');
             }
+            $chunk = $body->read(self::CHUNK_SIZE);
         }
+        $body->closeFileHandle();
         return 'Large upload, request is not cached.';
     }
 }

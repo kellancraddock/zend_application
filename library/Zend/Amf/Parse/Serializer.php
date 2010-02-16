@@ -15,8 +15,9 @@
  * @category   Zend
  * @package    Zend_Amf
  * @subpackage Parse
- * @copyright  Copyright (c) 2005-2008 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
+ * @version    $Id: Serializer.php 20096 2010-01-06 02:05:09Z bkarwin $
  */
 
 /**
@@ -24,7 +25,7 @@
  *
  * @package    Zend_Amf
  * @subpackage Parse
- * @copyright  Copyright (c) 2005-2008 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  */
 abstract class Zend_Amf_Parse_Serializer
@@ -38,8 +39,8 @@ abstract class Zend_Amf_Parse_Serializer
 
     /**
      * Constructor
-     * 
-     * @param  Zend_Amf_Parse_OutputStream $stream 
+     *
+     * @param  Zend_Amf_Parse_OutputStream $stream
      * @return void
      */
     public function __construct(Zend_Amf_Parse_OutputStream $stream)

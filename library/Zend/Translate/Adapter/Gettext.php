@@ -14,8 +14,8 @@
  *
  * @category   Zend
  * @package    Zend_Translate
- * @copyright  Copyright (c) 2005-2008 Zend Technologies USA Inc. (http://www.zend.com)
- * @version    $Id: Date.php 2498 2006-12-23 22:13:38Z thomas $
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
+ * @version    $Id: Gettext.php 20096 2010-01-06 02:05:09Z bkarwin $
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  */
 
@@ -28,7 +28,7 @@ require_once 'Zend/Translate/Adapter.php';
 /**
  * @category   Zend
  * @package    Zend_Translate
- * @copyright  Copyright (c) 2005-2008 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  */
 class Zend_Translate_Adapter_Gettext extends Zend_Translate_Adapter {
@@ -37,19 +37,6 @@ class Zend_Translate_Adapter_Gettext extends Zend_Translate_Adapter {
     private $_file        = false;
     private $_adapterInfo = array();
     private $_data        = array();
-
-    /**
-     * Generates the  adapter
-     *
-     * @param  string              $data     Translation data
-     * @param  string|Zend_Locale  $locale   OPTIONAL Locale/Language to set, identical with locale identifier,
-     *                                       see Zend_Locale for more information
-     * @param  array               $options  OPTIONAL Options to set
-     */
-    public function __construct($data, $locale = null, array $options = array())
-    {
-        parent::__construct($data, $locale, $options);
-    }
 
     /**
      * Read values from the MO file
@@ -124,13 +111,24 @@ class Zend_Translate_Adapter_Gettext extends Zend_Translate_Adapter {
             if ($origtemp[$count * 2 + 1] != 0) {
                 fseek($this->_file, $origtemp[$count * 2 + 2]);
                 $original = @fread($this->_file, $origtemp[$count * 2 + 1]);
+                $original = explode(chr(00), $original);
             } else {
-                $original = '';
+                $original[0] = '';
             }
 
             if ($transtemp[$count * 2 + 1] != 0) {
                 fseek($this->_file, $transtemp[$count * 2 + 2]);
-                $this->_data[$locale][$original] = fread($this->_file, $transtemp[$count * 2 + 1]);
+                $translate = fread($this->_file, $transtemp[$count * 2 + 1]);
+                $translate = explode(chr(00), $translate);
+                if ((count($original) > 1) && (count($translate) > 1)) {
+                    $this->_data[$locale][$original[0]] = $translate;
+                    array_shift($original);
+                    foreach ($original as $orig) {
+                        $this->_data[$locale][$orig] = '';
+                    }
+                } else {
+                    $this->_data[$locale][$original[0]] = $translate[0];
+                }
             }
         }
 

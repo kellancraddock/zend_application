@@ -12,43 +12,30 @@
  * obtain it through the world-wide-web, please send an email
  * to license@zend.com so we can send you a copy immediately.
  *
+ * @category   Zend
  * @package    Zend_Pdf
- * @copyright  Copyright (c) 2005-2008 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
+ * @version    $Id: Page.php 20470 2010-01-21 16:10:42Z alexander $
  */
 
-/** Zend_Pdf_Resource_Font */
-require_once 'Zend/Pdf/Resource/Font.php';
-
-/** Zend_Pdf_Style */
-require_once 'Zend/Pdf/Style.php';
-
-/** Zend_Pdf_Element_Dictionary */
+/** Internally used classes */
+require_once 'Zend/Pdf/Element.php';
+require_once 'Zend/Pdf/Element/Array.php';
+require_once 'Zend/Pdf/Element/String/Binary.php';
+require_once 'Zend/Pdf/Element/Boolean.php';
 require_once 'Zend/Pdf/Element/Dictionary.php';
+require_once 'Zend/Pdf/Element/Name.php';
+require_once 'Zend/Pdf/Element/Null.php';
+require_once 'Zend/Pdf/Element/Numeric.php';
+require_once 'Zend/Pdf/Element/String.php';
 
-/** Zend_Pdf_Element_Reference */
-require_once 'Zend/Pdf/Element/Reference.php';
-
-/** Zend_Pdf_ElementFactory */
-require_once 'Zend/Pdf/ElementFactory.php';
-
-/** Zend_Pdf_Color */
-require_once 'Zend/Pdf/Color.php';
-
-/** Zend_Pdf_Color_GrayScale */
-require_once 'Zend/Pdf/Color/GrayScale.php';
-
-/** Zend_Pdf_Color_Rgb */
-require_once 'Zend/Pdf/Color/Rgb.php';
-
-/** Zend_Pdf_Color_Cmyk */
-require_once 'Zend/Pdf/Color/Cmyk.php';
 
 /**
  * PDF Page
  *
  * @package    Zend_Pdf
- * @copyright  Copyright (c) 2005-2008 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  */
 class Zend_Pdf_Page
@@ -120,9 +107,9 @@ class Zend_Pdf_Page
 
 
     /**
-     * Reference to the object with page dictionary.
+     * Page dictionary (refers to an inderect Zend_Pdf_Element_Dictionary object).
      *
-     * @var Zend_Pdf_Element_Reference
+     * @var Zend_Pdf_Element_Reference|Zend_Pdf_Element_Object
      */
     protected $_pageDictionary;
 
@@ -142,7 +129,7 @@ class Zend_Pdf_Page
     protected $_attached;
 
     /**
-     * Stream of the drawing instractions.
+     * Stream of the drawing instructions.
      *
      * @var string
      */
@@ -274,7 +261,12 @@ class Zend_Pdf_Page
         } else if (is_string($param1) &&
                    ($param2 === null || $param2 instanceof Zend_Pdf_ElementFactory_Interface) &&
                    $param3 === null) {
-            $this->_objFactory = ($param2 !== null)? $param2 : Zend_Pdf_ElementFactory::createFactory(1);
+            if ($param2 !== null) {
+                $this->_objFactory = $param2;
+            } else {
+                require_once 'Zend/Pdf/ElementFactory.php';
+                $this->_objFactory = Zend_Pdf_ElementFactory::createFactory(1);
+            }
             $this->_attached   = false;
             $this->_safeGS     = true; /** New page created. That's users App responsibility to track GS changes */
 
@@ -292,11 +284,11 @@ class Zend_Pdf_Page
                     $param1 = Zend_Pdf_Page::SIZE_LETTER_LANDSCAPE;
                     break;
                 default:
-                    // should be in "x:y" form
+                    // should be in "x:y" or "x:y:" form
             }
 
             $pageDim = explode(':', $param1);
-            if(count($pageDim) == 3) {
+            if(count($pageDim) == 2  ||  count($pageDim) == 3) {
                 $pageWidth  = $pageDim[0];
                 $pageHeight = $pageDim[1];
             } else {
@@ -313,7 +305,13 @@ class Zend_Pdf_Page
 
         } else if (is_numeric($param1) && is_numeric($param2) &&
                    ($param3 === null || $param3 instanceof Zend_Pdf_ElementFactory_Interface)) {
-            $this->_objFactory = ($param3 !== null)? $param3 : Zend_Pdf_ElementFactory::createFactory(1);
+            if ($param3 !== null) {
+                $this->_objFactory = $param3;
+            } else {
+                require_once 'Zend/Pdf/ElementFactory.php';
+                $this->_objFactory = Zend_Pdf_ElementFactory::createFactory(1);
+            }
+
             $this->_attached = false;
             $this->_safeGS   = true; /** New page created. That's users App responsibility to track GS changes */
             $pageWidth  = $param1;
@@ -326,6 +324,7 @@ class Zend_Pdf_Page
 
         $this->_pageDictionary = $this->_objFactory->newObject(new Zend_Pdf_Element_Dictionary());
         $this->_pageDictionary->Type         = new Zend_Pdf_Element_Name('Page');
+        require_once 'Zend/Pdf.php';
         $this->_pageDictionary->LastModified = new Zend_Pdf_Element_String(Zend_Pdf::pdfDate());
         $this->_pageDictionary->Resources    = new Zend_Pdf_Element_Dictionary();
         $this->_pageDictionary->MediaBox     = new Zend_Pdf_Element_Array();
@@ -412,6 +411,7 @@ class Zend_Pdf_Page
     /**
      * Retrive PDF file reference to the page
      *
+     * @internal
      * @return Zend_Pdf_Element_Dictionary
      */
     public function getPageDictionary()
@@ -723,6 +723,7 @@ class Zend_Pdf_Page
      * returns array of Zend_Pdf_Resource_Font_Extracted objects
      *
      * @return array
+     * @throws Zend_Pdf_Exception
      */
     public function extractFonts()
     {
@@ -740,24 +741,25 @@ class Zend_Pdf_Page
 
             if (! ($fontDictionary instanceof Zend_Pdf_Element_Reference  ||
                    $fontDictionary instanceof Zend_Pdf_Element_Object) ) {
-                // Font dictionary has to be an indirect object or object reference
-                continue;
+                require_once 'Zend/Pdf/Exception.php';
+                throw new Zend_Pdf_Exception('Font dictionary has to be an indirect object or object reference.');
             }
 
-            $fontResourcesUnique[$fontDictionary->toString($this->_objFactory)] = $fontDictionary;
+            $fontResourcesUnique[spl_object_hash($fontDictionary->getObject())] = $fontDictionary;
         }
 
         $fonts = array();
         require_once 'Zend/Pdf/Exception.php';
-        foreach ($fontResourcesUnique as $resourceReference => $fontDictionary) {
+        foreach ($fontResourcesUnique as $resourceId => $fontDictionary) {
             try {
+                require_once 'Zend/Pdf/Resource/Font/Extracted.php';
                 // Try to extract font
                 $extractedFont = new Zend_Pdf_Resource_Font_Extracted($fontDictionary);
 
-                $fonts[$resourceReference] = $extractedFont;
+                $fonts[$resourceId] = $extractedFont;
             } catch (Zend_Pdf_Exception $e) {
                 if ($e->getMessage() != 'Unsupported font type.') {
-                    throw $e;
+                    throw new Zend_Pdf_Exception($e->getMessage(), $e->getCode(), $e);
                 }
             }
         }
@@ -771,6 +773,7 @@ class Zend_Pdf_Page
      * $fontName should be specified in UTF-8 encoding
      *
      * @return Zend_Pdf_Resource_Font_Extracted|null
+     * @throws Zend_Pdf_Exception
      */
     public function extractFont($fontName)
     {
@@ -781,14 +784,24 @@ class Zend_Pdf_Page
 
         $fontResources = $this->_pageDictionary->Resources->Font;
 
+        $fontResourcesUnique = array();
+
         require_once 'Zend/Pdf/Exception.php';
         foreach ($fontResources->getKeys() as $fontResourceName) {
             $fontDictionary = $fontResources->$fontResourceName;
 
             if (! ($fontDictionary instanceof Zend_Pdf_Element_Reference  ||
                    $fontDictionary instanceof Zend_Pdf_Element_Object) ) {
-                // Font dictionary has to be an indirect object or object reference
+                require_once 'Zend/Pdf/Exception.php';
+                throw new Zend_Pdf_Exception('Font dictionary has to be an indirect object or object reference.');
+            }
+
+            $resourceId = spl_object_hash($fontDictionary->getObject());
+            if (isset($fontResourcesUnique[$resourceId])) {
                 continue;
+            } else {
+                // Mark resource as processed
+                $fontResourcesUnique[$resourceId] = 1;
             }
 
             if ($fontDictionary->BaseFont->value != $fontName) {
@@ -797,10 +810,11 @@ class Zend_Pdf_Page
 
             try {
                 // Try to extract font
+                require_once 'Zend/Pdf/Resource/Font/Extracted.php';
                 return new Zend_Pdf_Resource_Font_Extracted($fontDictionary);
             } catch (Zend_Pdf_Exception $e) {
                 if ($e->getMessage() != 'Unsupported font type.') {
-                    throw $e;
+                    throw new Zend_Pdf_Exception($e->getMessage(), $e->getCode(), $e);
                 }
 
                 // Continue searhing font with specified name
@@ -1392,6 +1406,145 @@ class Zend_Pdf_Page
     }
 
     /**
+     * Draw a rounded rectangle.
+     *
+     * Fill types:
+     * Zend_Pdf_Page::SHAPE_DRAW_FILL_AND_STROKE - fill rectangle and stroke (default)
+     * Zend_Pdf_Page::SHAPE_DRAW_STROKE      - stroke rectangle
+     * Zend_Pdf_Page::SHAPE_DRAW_FILL        - fill rectangle
+     *
+     * radius is an integer representing radius of the four corners, or an array
+     * of four integers representing the radius starting at top left, going
+     * clockwise
+     *
+     * @param float $x1
+     * @param float $y1
+     * @param float $x2
+     * @param float $y2
+     * @param integer|array $radius
+     * @param integer $fillType
+     * @return Zend_Pdf_Page
+     */
+    public function drawRoundedRectangle($x1, $y1, $x2, $y2, $radius, 
+                                         $fillType = Zend_Pdf_Page::SHAPE_DRAW_FILL_AND_STROKE)
+    {
+
+        $this->_addProcSet('PDF');
+
+        if(!is_array($radius)) {
+            $radius = array($radius, $radius, $radius, $radius);
+        } else {
+            for ($i = 0; $i < 4; $i++) {
+                if(!isset($radius[$i])) {
+                    $radius[$i] = 0;
+                }
+            }
+        }
+
+        $topLeftX      = $x1;
+        $topLeftY      = $y2;
+        $topRightX     = $x2;
+        $topRightY     = $y2;
+        $bottomRightX  = $x2;
+        $bottomRightY  = $y1;
+        $bottomLeftX   = $x1;
+        $bottomLeftY   = $y1;
+        
+        //draw top side
+        $x1Obj = new Zend_Pdf_Element_Numeric($topLeftX + $radius[0]);
+        $y1Obj = new Zend_Pdf_Element_Numeric($topLeftY);
+        $this->_contents .= $x1Obj->toString() . ' ' . $y1Obj->toString() . " m\n";
+        $x1Obj = new Zend_Pdf_Element_Numeric($topRightX - $radius[1]);
+        $y1Obj = new Zend_Pdf_Element_Numeric($topRightY);
+        $this->_contents .= $x1Obj->toString() . ' ' . $y1Obj->toString() . " l\n";
+
+        //draw top right corner if needed
+        if ($radius[1] != 0) {        
+            $x1Obj = new Zend_Pdf_Element_Numeric($topRightX);
+            $y1Obj = new Zend_Pdf_Element_Numeric($topRightY);
+            $x2Obj = new Zend_Pdf_Element_Numeric($topRightX);
+            $y2Obj = new Zend_Pdf_Element_Numeric($topRightY);
+            $x3Obj = new Zend_Pdf_Element_Numeric($topRightX);
+            $y3Obj = new Zend_Pdf_Element_Numeric($topRightY - $radius[1]);
+            $this->_contents .= $x1Obj->toString() . ' ' . $y1Obj->toString() . ' '
+                              . $x2Obj->toString() . ' ' . $y2Obj->toString() . ' '
+                              . $x3Obj->toString() . ' ' . $y3Obj->toString() . ' '
+                              . " c\n";
+        }
+
+        //draw right side
+        $x1Obj = new Zend_Pdf_Element_Numeric($bottomRightX);
+        $y1Obj = new Zend_Pdf_Element_Numeric($bottomRightY + $radius[2]);
+        $this->_contents .= $x1Obj->toString() . ' ' . $y1Obj->toString() . " l\n";
+
+        //draw bottom right corner if needed
+        if ($radius[2] != 0) {        
+            $x1Obj = new Zend_Pdf_Element_Numeric($bottomRightX);
+            $y1Obj = new Zend_Pdf_Element_Numeric($bottomRightY);
+            $x2Obj = new Zend_Pdf_Element_Numeric($bottomRightX);
+            $y2Obj = new Zend_Pdf_Element_Numeric($bottomRightY);
+            $x3Obj = new Zend_Pdf_Element_Numeric($bottomRightX - $radius[2]);
+            $y3Obj = new Zend_Pdf_Element_Numeric($bottomRightY);
+            $this->_contents .= $x1Obj->toString() . ' ' . $y1Obj->toString() . ' '
+                              . $x2Obj->toString() . ' ' . $y2Obj->toString() . ' '
+                              . $x3Obj->toString() . ' ' . $y3Obj->toString() . ' '
+                              . " c\n";
+        }
+
+        //draw bottom side
+        $x1Obj = new Zend_Pdf_Element_Numeric($bottomLeftX + $radius[3]);
+        $y1Obj = new Zend_Pdf_Element_Numeric($bottomLeftY);
+        $this->_contents .= $x1Obj->toString() . ' ' . $y1Obj->toString() . " l\n";
+
+        //draw bottom left corner if needed
+        if ($radius[3] != 0) {        
+            $x1Obj = new Zend_Pdf_Element_Numeric($bottomLeftX);
+            $y1Obj = new Zend_Pdf_Element_Numeric($bottomLeftY);
+            $x2Obj = new Zend_Pdf_Element_Numeric($bottomLeftX);
+            $y2Obj = new Zend_Pdf_Element_Numeric($bottomLeftY);
+            $x3Obj = new Zend_Pdf_Element_Numeric($bottomLeftX);
+            $y3Obj = new Zend_Pdf_Element_Numeric($bottomLeftY + $radius[3]);
+            $this->_contents .= $x1Obj->toString() . ' ' . $y1Obj->toString() . ' '
+                              . $x2Obj->toString() . ' ' . $y2Obj->toString() . ' '
+                              . $x3Obj->toString() . ' ' . $y3Obj->toString() . ' '
+                              . " c\n";
+        }
+
+        //draw left side
+        $x1Obj = new Zend_Pdf_Element_Numeric($topLeftX);
+        $y1Obj = new Zend_Pdf_Element_Numeric($topLeftY - $radius[0]);
+        $this->_contents .= $x1Obj->toString() . ' ' . $y1Obj->toString() . " l\n";
+
+        //draw top left corner if needed
+        if ($radius[0] != 0) {        
+            $x1Obj = new Zend_Pdf_Element_Numeric($topLeftX);
+            $y1Obj = new Zend_Pdf_Element_Numeric($topLeftY);
+            $x2Obj = new Zend_Pdf_Element_Numeric($topLeftX);
+            $y2Obj = new Zend_Pdf_Element_Numeric($topLeftY);
+            $x3Obj = new Zend_Pdf_Element_Numeric($topLeftX + $radius[0]);
+            $y3Obj = new Zend_Pdf_Element_Numeric($topLeftY);
+            $this->_contents .= $x1Obj->toString() . ' ' . $y1Obj->toString() . ' '
+                              . $x2Obj->toString() . ' ' . $y2Obj->toString() . ' '
+                              . $x3Obj->toString() . ' ' . $y3Obj->toString() . ' '
+                              . " c\n";
+        }
+
+        switch ($fillType) {
+            case Zend_Pdf_Page::SHAPE_DRAW_FILL_AND_STROKE:
+                $this->_contents .= " B*\n";
+                break;
+            case Zend_Pdf_Page::SHAPE_DRAW_FILL:
+                $this->_contents .= " f*\n";
+                break;
+            case Zend_Pdf_Page::SHAPE_DRAW_STROKE:
+                $this->_contents .= " S\n";
+                break;
+        }
+
+        return $this;
+    }
+
+    /**
      * Draw a line of text at the specified position.
      *
      * @param string $text
@@ -1419,6 +1572,34 @@ class Zend_Pdf_Page
                          .  $xObj->toString() . ' ' . $yObj->toString() . " Td\n"
                          .  $textObj->toString() . " Tj\n"
                          .  "ET\n";
+
+        return $this;
+    }
+
+    /**
+     *
+     * @param Zend_Pdf_Annotation $annotation
+     * @return Zend_Pdf_Page
+     */
+    public function attachAnnotation(Zend_Pdf_Annotation $annotation)
+    {
+        $annotationDictionary = $annotation->getResource();
+        if (!$annotationDictionary instanceof Zend_Pdf_Element_Object  &&
+            !$annotationDictionary instanceof Zend_Pdf_Element_Reference) {
+            $annotationDictionary = $this->_objFactory->newObject($annotationDictionary);
+        }
+
+        if ($this->_pageDictionary->Annots === null) {
+            $this->_pageDictionary->touch();
+            $this->_pageDictionary->Annots = new Zend_Pdf_Element_Array();
+        } else {
+            $this->_pageDictionary->Annots->touch();
+        }
+
+        $this->_pageDictionary->Annots->items[] = $annotationDictionary;
+
+        $annotationDictionary->touch();
+        $annotationDictionary->P = $this->_pageDictionary;
 
         return $this;
     }

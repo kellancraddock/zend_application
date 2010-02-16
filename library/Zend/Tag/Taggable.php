@@ -15,15 +15,15 @@
  * @category   Zend
  * @package    Zend_Tag
  * @subpackage Item
- * @copyright  Copyright (c) 2005-2008 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
- * @version    $Id: Taggable.php 14868 2009-04-12 16:38:07Z dasprid $
+ * @version    $Id: Taggable.php 20096 2010-01-06 02:05:09Z bkarwin $
  */
 
 /**
  * @category   Zend
  * @package    Zend_Tag
- * @copyright  Copyright (c) 2005-2008 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  */
 interface Zend_Tag_Taggable
@@ -34,14 +34,14 @@ interface Zend_Tag_Taggable
      * @return string
      */
     public function getTitle();
-    
+
     /**
      * Get the weight of the tag
      *
      * @return float
      */
     public function getWeight();
-    
+
     /**
      * Set a parameter
      *
@@ -49,7 +49,7 @@ interface Zend_Tag_Taggable
      * @param string $value
      */
     public function setParam($name, $value);
-    
+
     /**
      * Get a parameter
      *

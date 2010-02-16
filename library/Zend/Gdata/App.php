@@ -16,14 +16,15 @@
  * @category   Zend
  * @package    Zend_Gdata
  * @subpackage App
- * @copyright  Copyright (c) 2005-2009 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
+ * @version    $Id: App.php 20096 2010-01-06 02:05:09Z bkarwin $
  */
 
 /**
  * Zend_Gdata_Feed
  */
-require_once 'Zend/Gdata/Feed.php';
+require_once 'Zend/Gdata/App/Feed.php';
 
 /**
  * Zend_Gdata_Http_Client
@@ -48,7 +49,7 @@ require_once 'Zend/Gdata/App/MediaSource.php';
  * @category   Zend
  * @package    Zend_Gdata
  * @subpackage App
- * @copyright  Copyright (c) 2005-2009 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  */
 class Zend_Gdata_App
@@ -255,7 +256,7 @@ class Zend_Gdata_App
             )
         );
         $this->_httpClient = $client;
-        Zend_Gdata::setStaticHttpClient($client);
+        self::setStaticHttpClient($client);
         return $this;
     }
 
@@ -513,7 +514,7 @@ class Zend_Gdata_App
             }
             if ($method == 'PUT' || $method == 'DELETE') {
                 $editLink = $data->getEditLink();
-                if ($editLink != null) {
+                if ($editLink != null && $url == null) {
                     $url = $editLink->getHref();
                 }
             }
@@ -633,9 +634,9 @@ class Zend_Gdata_App
 
         // Make sure the HTTP client object is 'clean' before making a request
         // In addition to standard headers to reset via resetParameters(),
-        // also reset the Slug header
+        // also reset the Slug and If-Match headers
         $this->_httpClient->resetParameters();
-        $this->_httpClient->setHeaders('Slug', null);
+        $this->_httpClient->setHeaders(array('Slug', 'If-Match'));
 
         // Set the params for the new request to be performed
         $this->_httpClient->setHeaders($headers);
@@ -756,7 +757,7 @@ class Zend_Gdata_App
         if (!$this->_useObjectMapping) {
             return $feedContent;
         }
-        
+
         $protocolVersionStr = $response->getHeader('GData-Version');
         $majorProtocolVersion = null;
         $minorProtocolVersion = null;
@@ -827,7 +828,7 @@ class Zend_Gdata_App
      * @param  string $className The class which is used as the return type
      * @param  string $useIncludePath Whether the include_path should be searched
      * @throws Zend_Gdata_App_Exception
-     * @return Zend_Gdata_Feed
+     * @return Zend_Gdata_App_Feed
      */
     public static function importFile($filename,
             $className='Zend_Gdata_App_Feed', $useIncludePath = false)
@@ -1020,7 +1021,9 @@ class Zend_Gdata_App
             $foundClassName = null;
             foreach ($this->_registeredPackages as $name) {
                  try {
-                     if (!class_exists($name . '_' . $class)) {
+                     // Autoloading disabled on next line for compatibility
+                     // with magic factories. See ZF-6660.
+                     if (!class_exists($name . '_' . $class, false)) {
                         require_once 'Zend/Loader.php';
                         @Zend_Loader::loadClass($name . '_' . $class);
                      }

@@ -15,9 +15,9 @@
  * @category   Zend
  * @package    Zend_Service
  * @subpackage Amazon_S3
- * @copyright  Copyright (c) 2009, Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
- * @version    $Id: S3.php 14190 2009-02-28 04:32:18Z jplock $
+ * @version    $Id: S3.php 20096 2010-01-06 02:05:09Z bkarwin $
  */
 
 /**
@@ -36,8 +36,9 @@ require_once 'Zend/Crypt/Hmac.php';
  * @category   Zend
  * @package    Zend_Service
  * @subpackage Amazon_S3
- * @copyright  Copyright (c) 2005-2008, Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
+ * @see        http://docs.amazonwebservices.com/AmazonS3/2006-03-01/
  */
 class Zend_Service_Amazon_S3 extends Zend_Service_Amazon_Abstract
 {
@@ -48,6 +49,13 @@ class Zend_Service_Amazon_S3 extends Zend_Service_Amazon_Abstract
      */
     protected static $_wrapperClients = array();
 
+    /**
+     * Endpoint for the service
+     *
+     * @var Zend_Uri_Http
+     */
+    protected $_endpoint;
+
     const S3_ENDPOINT = 's3.amazonaws.com';
 
     const S3_ACL_PRIVATE = 'private';
@@ -55,16 +63,63 @@ class Zend_Service_Amazon_S3 extends Zend_Service_Amazon_Abstract
     const S3_ACL_PUBLIC_WRITE = 'public-read-write';
     const S3_ACL_AUTH_READ = 'authenticated-read';
 
+    const S3_REQUESTPAY_HEADER = 'x-amz-request-payer';
     const S3_ACL_HEADER = 'x-amz-acl';
     const S3_CONTENT_TYPE_HEADER = 'Content-Type';
 
     /**
-     * Add a new bucket
+     * Set S3 endpoint to use
      *
-     * @param  string $bucket
+     * @param string|Zend_Uri_Http $endpoint
+     * @return Zend_Service_Amazon_S3
+     */
+    public function setEndpoint($endpoint)
+    {
+        if (!($endpoint instanceof Zend_Uri_Http)) {
+            $endpoint = Zend_Uri::factory($endpoint);
+        }
+        if (!$endpoint->valid()) {
+            /**
+             * @see Zend_Service_Amazon_S3_Exception
+             */
+            require_once 'Zend/Service/Amazon/S3/Exception.php';
+            throw new Zend_Service_Amazon_S3_Exception('Invalid endpoint supplied');
+        }
+        $this->_endpoint = $endpoint;
+        return $this;
+    }
+
+    /**
+     * Get current S3 endpoint
+     *
+     * @return Zend_Uri_Http
+     */
+    public function getEndpoint()
+    {
+        return $this->_endpoint;
+    }
+
+    /**
+     * Constructor
+     *
+     * @param string $accessKey
+     * @param string $secretKey
+     * @param string $region
+     */
+    public function __construct($accessKey=null, $secretKey=null, $region=null)
+    {
+        parent::__construct($accessKey, $secretKey, $region);
+
+        $this->setEndpoint('http://'.self::S3_ENDPOINT);
+    }
+
+    /**
+     * Verify if the bucket name is valid
+     *
+     * @param string $bucket
      * @return boolean
      */
-    public function createBucket($bucket)
+    public function _validBucketName($bucket)
     {
         $len = strlen($bucket);
         if ($len < 3 || $len > 255) {
@@ -83,15 +138,33 @@ class Zend_Service_Amazon_S3 extends Zend_Service_Amazon_Abstract
             throw new Zend_Service_Amazon_S3_Exception("Bucket name \"$bucket\" contains invalid characters");
         }
 
-        if (preg_match('/(\d+).(\d+).(\d+).(\d+)/', $bucket)) {
+        if (preg_match('/(\d){1,3}\.(\d){1,3}\.(\d){1,3}\.(\d){1,3}/', $bucket)) {
             /**
              * @see Zend_Service_Amazon_S3_Exception
              */
             require_once 'Zend/Service/Amazon/S3/Exception.php';
             throw new Zend_Service_Amazon_S3_Exception("Bucket name \"$bucket\" cannot be an IP address");
         }
+        return true;
+    }
 
-        $response = $this->_makeRequest('PUT', $bucket);
+    /**
+     * Add a new bucket
+     *
+     * @param  string $bucket
+     * @return boolean
+     */
+    public function createBucket($bucket, $location = null)
+    {
+        $this->_validBucketName($bucket);
+
+        if($location) {
+            $data = '<CreateBucketConfiguration><LocationConstraint>'.$location.'</LocationConstraint></CreateBucketConfiguration>';
+        }
+        else {
+            $data = null;
+        }
+        $response = $this->_makeRequest('PUT', $bucket, null, array(), $data);
 
         return ($response->getStatus() == 200);
     }
@@ -208,14 +281,19 @@ class Zend_Service_Amazon_S3 extends Zend_Service_Amazon_Abstract
     /**
      * List the objects in a bucket.
      *
-     * Provides the list of object keys that are contained in the bucket.
+     * Provides the list of object keys that are contained in the bucket.  Valid params include the following.
+     * prefix - Limits the response to keys which begin with the indicated prefix. You can use prefixes to separate a bucket into different sets of keys in a way similar to how a file system uses folders.
+     * marker - Indicates where in the bucket to begin listing. The list will only include keys that occur lexicographically after marker. This is convenient for pagination: To get the next page of results use the last key of the current page as the marker.
+     * max-keys - The maximum number of keys you'd like to see in the response body. The server might return fewer than this many keys, but will not return more.
+     * delimiter - Causes keys that contain the same string between the prefix and the first occurrence of the delimiter to be rolled up into a single result element in the CommonPrefixes collection. These rolled-up keys are not returned elsewhere in the response.
      *
      * @param  string $bucket
+     * @param array $params S3 GET Bucket Paramater
      * @return array|false
      */
-    public function getObjectsByBucket($bucket)
+    public function getObjectsByBucket($bucket, $params = array())
     {
-        $response = $this->_makeRequest('GET', $bucket);
+        $response = $this->_makeRequest('GET', $bucket, $params);
 
         if ($response->getStatus() != 200) {
             return false;
@@ -235,35 +313,42 @@ class Zend_Service_Amazon_S3 extends Zend_Service_Amazon_Abstract
         return $objects;
     }
 
+    /**
+     * Make sure the object name is valid
+     *
+     * @param  string $object
+     * @return string
+     */
     protected function _fixupObjectName($object)
     {
-        $nameparts = explode('/', $object, 2);
+        $nameparts = explode('/', $object);
 
-        if (preg_match('/[^a-z0-9\._-]/', $nameparts[0])) {
-            /**
-             * @see Zend_Service_Amazon_S3_Exception
-             */
-            require_once 'Zend/Service/Amazon/S3/Exception.php';
-            throw new Zend_Service_Amazon_S3_Exception("Bucket name contains invalid characters");
+        $this->_validBucketName($nameparts[0]);
+
+        $firstpart = array_shift($nameparts);
+        if (count($nameparts) == 0) {
+            return $firstpart;
         }
 
-        if(empty($nameparts[1])) {
-            return $object;
-        }
-
-        return $nameparts[0].'/'.urlencode($nameparts[1]);
+        return $firstpart.'/'.join('/', array_map('rawurlencode', $nameparts));
     }
 
     /**
      * Get an object
      *
      * @param  string $object
+     * @param  bool   $paidobject This is "requestor pays" object
      * @return string|false
      */
-    public function getObject($object)
+    public function getObject($object, $paidobject=false)
     {
         $object = $this->_fixupObjectName($object);
-        $response = $this->_makeRequest('GET', $object);
+        if ($paidobject) {
+            $response = $this->_makeRequest('GET', $object, null, array(self::S3_REQUESTPAY_HEADER => 'requester'));
+        }
+        else {
+            $response = $this->_makeRequest('GET', $object);
+        }
 
         if ($response->getStatus() != 200) {
             return false;
@@ -273,10 +358,39 @@ class Zend_Service_Amazon_S3 extends Zend_Service_Amazon_Abstract
     }
 
     /**
+     * Get an object using streaming
+     *
+     * Can use either provided filename for storage or create a temp file if none provided.
+     *
+     * @param  string $object Object path
+     * @param  string $streamfile File to write the stream to
+     * @param  bool   $paidobject This is "requestor pays" object
+     * @return Zend_Http_Response_Stream|false
+     */
+    public function getObjectStream($object, $streamfile = null, $paidobject=false)
+    {
+        $object = $this->_fixupObjectName($object);
+        self::getHttpClient()->setStream($streamfile?$streamfile:true);
+        if ($paidobject) {
+            $response = $this->_makeRequest('GET', $object, null, array(self::S3_REQUESTPAY_HEADER => 'requester'));
+        }
+        else {
+            $response = $this->_makeRequest('GET', $object);
+        }
+        self::getHttpClient()->setStream(null);
+
+        if ($response->getStatus() != 200 || !($response instanceof Zend_Http_Response_Stream)) {
+            return false;
+        }
+
+        return $response;
+    }
+
+    /**
      * Upload an object by a PHP string
      *
      * @param  string $object Object name
-     * @param  string $data   Object data
+     * @param  string|resource $data   Object data (can be string or stream)
      * @param  array  $meta   Metadata
      * @return boolean
      */
@@ -285,7 +399,9 @@ class Zend_Service_Amazon_S3 extends Zend_Service_Amazon_Abstract
         $object = $this->_fixupObjectName($object);
         $headers = (is_array($meta)) ? $meta : array();
 
-        $headers['Content-MD5'] = base64_encode(md5($data, true));
+        if(!is_resource($data)) {
+            $headers['Content-MD5'] = base64_encode(md5($data, true));
+        }
         $headers['Expect'] = '100-continue';
 
         if (!isset($headers[self::S3_CONTENT_TYPE_HEADER])) {
@@ -299,7 +415,7 @@ class Zend_Service_Amazon_S3 extends Zend_Service_Amazon_Abstract
             // It is escaped by double quotes for some reason
             $etag = str_replace('"', '', $response->getHeader('Etag'));
 
-            if ($etag == md5($data)) {
+            if (is_resource($data) || $etag == md5($data)) {
                 return true;
             }
         }
@@ -317,7 +433,6 @@ class Zend_Service_Amazon_S3 extends Zend_Service_Amazon_Abstract
      */
     public function putFile($path, $object, $meta=null)
     {
-        $object = $this->_fixupObjectName($object);
         $data = @file_get_contents($path);
         if ($data === false) {
             /**
@@ -333,6 +448,40 @@ class Zend_Service_Amazon_S3 extends Zend_Service_Amazon_Abstract
 
         if (!isset($meta[self::S3_CONTENT_TYPE_HEADER])) {
            $meta[self::S3_CONTENT_TYPE_HEADER] = self::getMimeType($path);
+        }
+
+        return $this->putObject($object, $data, $meta);
+    }
+
+    /**
+     * Put file to S3 as object, using streaming
+     *
+     * @param string $path   File name
+     * @param string $object Object name
+     * @param array  $meta   Metadata
+     * @return boolean
+     */
+    public function putFileStream($path, $object, $meta=null)
+    {
+        $data = @fopen($path, "rb");
+        if ($data === false) {
+            /**
+             * @see Zend_Service_Amazon_S3_Exception
+             */
+            require_once 'Zend/Service/Amazon/S3/Exception.php';
+            throw new Zend_Service_Amazon_S3_Exception("Cannot open file $path");
+        }
+
+        if (!is_array($meta)) {
+            $meta = array();
+        }
+
+        if (!isset($meta[self::S3_CONTENT_TYPE_HEADER])) {
+           $meta[self::S3_CONTENT_TYPE_HEADER] = self::getMimeType($path);
+        }
+
+        if(!isset($meta['Content-MD5'])) {
+            $headers['Content-MD5'] = base64_encode(md5_file($path, true));
         }
 
         return $this->putObject($object, $data, $meta);
@@ -356,13 +505,11 @@ class Zend_Service_Amazon_S3 extends Zend_Service_Amazon_Abstract
     /**
      * Make a request to Amazon S3
      *
-     * TODO: support bucket.s3.amazon.com style
-     *
-     * @param  string $method
-     * @param  string $path
-     * @param  array  $params
-     * @param  array  $headers
-     * @param  string $data
+     * @param  string $method	Request method
+     * @param  string $path		Path to requested object
+     * @param  array  $params	Request parameters
+     * @param  array  $headers	HTTP headers
+     * @param  string|resource $data		Request data
      * @return Zend_Http_Response
      */
     public function _makeRequest($method, $path='', $params=null, $headers=array(), $data=null)
@@ -375,11 +522,38 @@ class Zend_Service_Amazon_S3 extends Zend_Service_Amazon_Abstract
 
         $headers['Date'] = gmdate(DATE_RFC1123, time());
 
+        if(is_resource($data) && $method != 'PUT') {
+            /**
+             * @see Zend_Service_Amazon_S3_Exception
+             */
+            require_once 'Zend/Service/Amazon/S3/Exception.php';
+            throw new Zend_Service_Amazon_S3_Exception("Only PUT request supports stream data");
+        }
+
+        // build the end point out
+        $parts = explode('/', $path, 2);
+        $endpoint = clone($this->_endpoint);
+        if ($parts[0]) {
+            // prepend bucket name to the hostname
+            $endpoint->setHost($parts[0].'.'.$endpoint->getHost());
+        }
+        if (!empty($parts[1])) {
+            $endpoint->setPath('/'.$parts[1]);
+        }
+        else {
+            $endpoint->setPath('/');
+            if ($parts[0]) {
+                $path = $parts[0].'/';
+            }
+        }
+
         self::addSignature($method, $path, $headers);
 
         $client = self::getHttpClient();
 
         $client->resetParameters();
+        $client->setUri($endpoint);
+        $client->setAuth(false);
         // Work around buglet in HTTP client - it doesn't clean headers
         // Remove when ZHC is fixed
         $client->setHeaders(array('Content-MD5' => null,
@@ -387,15 +561,6 @@ class Zend_Service_Amazon_S3 extends Zend_Service_Amazon_Abstract
                                   'Range'       => null,
                                   'x-amz-acl'   => null));
 
-        // build the end point out
-        $parts = explode('/', $path);
-        if(count($parts) > 1) {
-            $endpoint = 'http://' . $parts[0] . '.' . self::S3_ENDPOINT;
-            array_shift($parts);
-            $client->setUri($endpoint . '/' . implode('/', $parts));
-        } else {
-            $client->setUri('http://' . self::S3_ENDPOINT.'/'.$path);
-        }
         $client->setHeaders($headers);
 
         if (is_array($params)) {
@@ -410,7 +575,6 @@ class Zend_Service_Amazon_S3 extends Zend_Service_Amazon_Abstract
              }
              $client->setRawData($data, $headers['Content-type']);
          }
-
          do {
             $retry = false;
 
@@ -428,7 +592,7 @@ class Zend_Service_Amazon_S3 extends Zend_Service_Amazon_Abstract
                 // This should never happen as Zend_Http_Client will redirect automatically
             }
             else if ($response_code == 100) {
-                echo 'OK to Continue';
+                // echo 'OK to Continue';
             }
         } while ($retry);
 
@@ -439,7 +603,7 @@ class Zend_Service_Amazon_S3 extends Zend_Service_Amazon_Abstract
      * Add the S3 Authorization signature to the request headers
      *
      * @param  string $method
-     * @param  string $pathhttp://
+     * @param  string $path
      * @param  array &$headers
      * @return string
      */
@@ -511,8 +675,6 @@ class Zend_Service_Amazon_S3 extends Zend_Service_Amazon_Abstract
     /**
      * Attempt to get the content-type of a file based on the extension
      *
-     * TODO: move this to Zend_Mime
-     *
      * @param  string $path
      * @return string
      */
@@ -525,7 +687,7 @@ class Zend_Service_Amazon_S3 extends Zend_Service_Amazon_Abstract
             return 'binary/octet-stream';
         }
 
-        switch ($ext) {
+        switch (strtolower($ext)) {
             case 'xls':
                 $content_type = 'application/excel';
                 break;

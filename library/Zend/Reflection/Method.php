@@ -14,9 +14,9 @@
  *
  * @category   Zend
  * @package    Zend_Reflection
- * @copyright  Copyright (c) 2005-2009 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
- * @version    $Id$
+ * @version    $Id: Method.php 20096 2010-01-06 02:05:09Z bkarwin $
  */
 
 /**
@@ -37,7 +37,7 @@ require_once 'Zend/Reflection/Parameter.php';
 /**
  * @category   Zend
  * @package    Zend_Reflection
- * @copyright  Copyright (c) 2005-2009 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  */
 class Zend_Reflection_Method extends ReflectionMethod
@@ -62,7 +62,7 @@ class Zend_Reflection_Method extends ReflectionMethod
         }
         return $instance;
     }
-    
+
     /**
      * Get start line (position) of method
      *
@@ -76,10 +76,10 @@ class Zend_Reflection_Method extends ReflectionMethod
                 return $this->getDocblock()->getStartLine();
             }
         }
-        
+
         return parent::getStartLine();
     }
-    
+
     /**
      * Get reflection of declaring class
      *
@@ -97,7 +97,7 @@ class Zend_Reflection_Method extends ReflectionMethod
         unset($phpReflection);
         return $zendReflection;
     }
-    
+
     /**
      * Get all method parameter reflection objects
      *
@@ -120,24 +120,7 @@ class Zend_Reflection_Method extends ReflectionMethod
         unset($phpReflections);
         return $zendReflections;
     }
-    
-    /**
-     * Get return type tag
-     *
-     * @return Zend_Reflection_Docblock_Tag_Return
-     */
-    public function getReturn()
-    {
-        $docblock = $this->getDocblock();
-        if (!$docblock->hasTag('return')) {
-            require_once 'Zend/Reflection/Exception.php';
-            throw new Zend_Reflection_Exception('Function does not specify an @return annotation tag; cannot determine return type');
-        }
-        $tag    = $docblock->getTag('return');
-        $return = Zend_Reflection_Docblock_Tag::factory('@return ' . $tag->getDescription());
-        return $return;
-    }
-    
+
     /**
      * Get method contents
      *
@@ -149,10 +132,10 @@ class Zend_Reflection_Method extends ReflectionMethod
         $fileContents = file($this->getFileName());
         $startNum = $this->getStartLine($includeDocblock);
         $endNum = ($this->getEndLine() - $this->getStartLine());
-        
+
         return implode("\n", array_splice($fileContents, $startNum, $endNum, true));
     }
-    
+
     /**
      * Get method body
      *
@@ -161,25 +144,25 @@ class Zend_Reflection_Method extends ReflectionMethod
     public function getBody()
     {
         $lines = array_slice(
-            file($this->getDeclaringClass()->getFileName()), 
-            $this->getStartLine(), 
-            ($this->getEndLine() - $this->getStartLine()), 
+            file($this->getDeclaringClass()->getFileName(), FILE_IGNORE_NEW_LINES),
+            $this->getStartLine(),
+            ($this->getEndLine() - $this->getStartLine()),
             true
         );
-        
+
         $firstLine = array_shift($lines);
 
         if (trim($firstLine) !== '{') {
             array_unshift($lines, $firstLine);
         }
-        
+
         $lastLine = array_pop($lines);
-        
+
         if (trim($lastLine) !== '}') {
             array_push($lines, $lastLine);
         }
 
-        // just in case we had code on the braket lines
+        // just in case we had code on the bracket lines
         return rtrim(ltrim(implode("\n", $lines), '{'), '}');
     }
 }

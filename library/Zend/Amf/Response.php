@@ -14,24 +14,25 @@
  *
  * @category   Zend
  * @package    Zend_Amf
- * @copyright  Copyright (c) 2005-2008 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
+ * @version    $Id: Response.php 20096 2010-01-06 02:05:09Z bkarwin $
  */
 
-/** Zend_Amf_Constants */
+/** @see Zend_Amf_Constants */
 require_once 'Zend/Amf/Constants.php';
 
-/** Zend_Amf_Parse_OutputStream */
+/** @see Zend_Amf_Parse_OutputStream */
 require_once 'Zend/Amf/Parse/OutputStream.php';
 
-/** Zend_Amf_Parse_Amf0_Serializer */
+/** @see Zend_Amf_Parse_Amf0_Serializer */
 require_once 'Zend/Amf/Parse/Amf0/Serializer.php';
 
 /**
  * Handles converting the PHP object ready for response back into AMF
  *
  * @package    Zend_Amf
- * @copyright  Copyright (c) 2005-2008 Zend Technologies USA Inc. (http://www.zend.com)
+ * @copyright  Copyright (c) 2005-2010 Zend Technologies USA Inc. (http://www.zend.com)
  * @license    http://framework.zend.com/license/new-bsd     New BSD License
  */
 class Zend_Amf_Response
@@ -171,7 +172,7 @@ class Zend_Amf_Response
 
     /**
      * Retrieve attached AMF message headers
-     * 
+     *
      * @return array Array of Zend_Amf_Value_MessageHeader objects
      */
     public function getAmfHeaders()
