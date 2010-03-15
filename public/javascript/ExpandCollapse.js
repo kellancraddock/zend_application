@@ -1,5 +1,5 @@
 /**
-* ExpandCollapse Class is used to expand and collapse areas of content.
+* ExpandCollapse Class is used to expand and collapse areas of content. v0.5
 * @returns true
 */
 function ExpandCollapse() {
