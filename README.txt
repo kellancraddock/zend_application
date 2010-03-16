@@ -10,5 +10,4 @@ added view and action helpers
  - updated zend_application to v0.5
  3/14/10
  - added ExpandCollapse js class
- - added ExpandCollapse js class
  - added Gallery js class
