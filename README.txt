@@ -9,3 +9,4 @@ Authors: Kellan Craddock & Jessica Tsuji
  - updated zend_application to v0.5
  - added ExpandCollapse js class
  - added Gallery js class
+-----------------------------------------
