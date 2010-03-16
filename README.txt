@@ -1,5 +1,5 @@
 Generic Zend Application v0.5
-
+Authors: Kellan Craddock & Jessica Tsuji
 added view and action helpers
 
 2/8/10
