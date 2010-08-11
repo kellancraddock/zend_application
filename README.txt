@@ -13,4 +13,8 @@ Authors: Kellan Craddock & Jessica Tsuji
 2/15/10
  - added ExpandCollapse js class
  - added Gallery js class
+ 
+8/11/10
+ - updated to zendframework version 1.10.7
+ 
 -----------------------------------------
