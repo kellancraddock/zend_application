@@ -1,4 +1,4 @@
-Generic Zend Application v0.5
+Generic Zend Application v0.6
 Authors: Kellan Craddock & Jessica Tsuji
 
 ----------------------------------------
@@ -16,5 +16,10 @@ Authors: Kellan Craddock & Jessica Tsuji
  
 8/11/10
  - updated to zendframework version 1.10.7
+ 
+ 11/1/10
+ - updated base model to reflect zends built in model support
+ - updated ErrorController based on throwing and catching exceptions
+ - updated zend_application to v0.6
  
 -----------------------------------------
