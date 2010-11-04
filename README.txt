@@ -22,4 +22,7 @@ Authors: Kellan Craddock & Jessica Tsuji
  - updated ErrorController based on throwing and catching exceptions
  - updated zend_application to v0.6
  
+ 11/4/10
+ - added development branch for deving
+ 
 -----------------------------------------
