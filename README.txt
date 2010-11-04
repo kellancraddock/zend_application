@@ -24,6 +24,7 @@ Authors: Kellan Craddock & Jessica Tsuji
 
  11/4/10
  - added development branch for deving
+ - added a production branch for deployment to the production server
  
 -----------------------------------------
 
