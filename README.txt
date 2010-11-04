@@ -24,7 +24,7 @@ Authors: Kellan Craddock & Jessica Tsuji
  
  11/4/10
  - added development branch for deving
+ - added a feature branch
  
 -----------------------------------------
-
 testing dev branch
