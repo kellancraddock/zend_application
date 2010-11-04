@@ -21,8 +21,11 @@ Authors: Kellan Craddock & Jessica Tsuji
  - updated base model to reflect zends built in model support
  - updated ErrorController based on throwing and catching exceptions
  - updated zend_application to v0.6
- 
+
  11/4/10
  - added development branch for deving
  
 -----------------------------------------
+
+test change to master branch
+
